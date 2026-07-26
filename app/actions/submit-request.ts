@@ -1,6 +1,7 @@
 "use server";
 
 import { requestFormSchema } from "@/lib/validations";
+import { sendWhatsAppMessage, sendDocument } from "@/lib/openwa";
 import { sendTelegramNotification } from "@/lib/telegram";
 import { ActionResponse } from "@/types/request";
 
@@ -41,33 +42,80 @@ export async function submitHelpRequest(
       };
     }
 
-    let attachmentData = null;
+    const data = validationResult.data;
+
+    let attachmentBuffer: Buffer | null = null;
     if (rawFile && rawFile.size > 0) {
       const arrayBuffer = await rawFile.arrayBuffer();
-      attachmentData = {
-        filename: rawFile.name,
-        buffer: Buffer.from(arrayBuffer),
-        contentType: rawFile.type,
-      };
+      attachmentBuffer = Buffer.from(arrayBuffer);
     }
 
-    const telegramResult = await sendTelegramNotification({
-      name: fullName,
-      phone,
-      email,
-      college,
-      type: requirementType,
-      subject,
-      deadline,
-      description,
-      attachment: attachmentData,
-    });
+    // Format WhatsApp message
+    const formattedWaMessage = [
+      "📩 *New Assignment Request*",
+      "",
+      "👤 *Name:*",
+      data.fullName,
+      "",
+      "📞 *Phone:*",
+      data.phone,
+      "",
+      "📧 *Email:*",
+      data.email || "N/A",
+      "",
+      "🏫 *College:*",
+      data.college || "N/A",
+      "",
+      "📌 *Requirement:*",
+      data.requirementType,
+      "",
+      "📚 *Subject:*",
+      data.subject,
+      "",
+      "⏰ *Deadline:*",
+      data.deadline,
+      "",
+      "📝 *Description:*",
+      data.description,
+    ].join("\n");
 
-    if (!telegramResult.success) {
+    // Dispatch to WhatsApp and Telegram in parallel
+    const [waResult, telegramResult] = await Promise.all([
+      sendWhatsAppMessage(formattedWaMessage),
+      sendTelegramNotification({
+        name: data.fullName,
+        phone: data.phone,
+        email: data.email,
+        college: data.college,
+        type: data.requirementType,
+        subject: data.subject,
+        deadline: data.deadline,
+        description: data.description,
+        attachment: rawFile && attachmentBuffer ? {
+          filename: rawFile.name,
+          buffer: attachmentBuffer,
+          contentType: rawFile.type || "application/octet-stream",
+        } : null,
+      }),
+    ]);
+
+    if (rawFile && attachmentBuffer) {
+      const base64 = attachmentBuffer.toString("base64");
+      await sendDocument(
+        {
+          base64,
+          filename: rawFile.name,
+          mimetype: rawFile.type || "application/octet-stream",
+        },
+        `Attachment from ${data.fullName}`
+      );
+    }
+
+    if (!waResult.success && !telegramResult.success) {
       return {
         success: false,
-        message: telegramResult.error || "Failed to notify admin via Telegram",
-        error: telegramResult.error,
+        message: "Failed to notify admin via WhatsApp or Telegram",
+        error: waResult.error || telegramResult.error,
       };
     }
 

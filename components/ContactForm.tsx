@@ -106,12 +106,21 @@ export default function ContactForm() {
         formData.append("attachment", selectedFile);
       }
 
-      const res = await submitHelpRequest(null, formData);
+      try {
+        const response = await fetch("/api/contact", {
+          method: "POST",
+          body: formData,
+        });
 
-      if (res.success) {
-        router.push("/success");
-      } else {
-        setServerError(res.message || "Failed to submit request. Please try again.");
+        const res = await response.json();
+
+        if (response.ok && res.success) {
+          router.push("/success");
+        } else {
+          setServerError(res.error || res.message || "Failed to submit request. Please try again.");
+        }
+      } catch (err) {
+        setServerError("Failed to connect to the server. Please check your internet connection.");
       }
     });
   };
@@ -123,7 +132,7 @@ export default function ContactForm() {
       <div className="mb-8 border-b border-gray-100 pb-6">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold mb-3">
           <Send className="w-3.5 h-3.5" />
-          <span>Direct Telegram Admin Submission</span>
+          <span>Instant Telegram & WhatsApp Admin Notification</span>
         </div>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
           Submit Your Request
@@ -393,7 +402,7 @@ export default function ContactForm() {
             )}
           </button>
           <p className="text-center text-xs text-gray-400 mt-3">
-            Instant Telegram Bot Alert • 100% Confidential • Fast Reply
+            Instant Telegram & WhatsApp Alert • 100% Confidential • Fast Reply
           </p>
         </div>
 
