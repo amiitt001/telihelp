@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { requestFormSchema, RequestFormValues } from "@/lib/validations";
-import { submitHelpRequest } from "@/app/actions/submit-request";
 import {
   Upload,
   File,
@@ -119,7 +118,7 @@ export default function ContactForm() {
         } else {
           setServerError(res.error || res.message || "Failed to submit request. Please try again.");
         }
-      } catch (err) {
+      } catch {
         setServerError("Failed to connect to the server. Please check your internet connection.");
       }
     });
