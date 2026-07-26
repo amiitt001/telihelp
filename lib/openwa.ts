@@ -19,6 +19,7 @@ function getOpenWAConfig() {
 function getHeaders(apiKey: string): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "Bypass-Tunnel-Reminder": "true",
   };
   if (apiKey) {
     headers["X-API-Key"] = apiKey;
